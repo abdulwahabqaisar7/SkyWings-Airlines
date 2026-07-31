@@ -190,6 +190,9 @@ function updateNavbar() {
             // Update auth item
             if (authNavItem) {
                 authNavItem.innerHTML = '<a href="login.html" class="btn-login">Login</a>';
+                if (!authNavItem.parentNode) {
+                    navMenu.appendChild(authNavItem);
+                }
             } else {
                 const loginExists = navMenu.querySelector('a[href*="login"]');
                 if (!loginExists) {
