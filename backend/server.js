@@ -10,7 +10,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+// Replace 'YOUR-PROJECT-NAME' with your actual Vercel project name
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://YOUR-PROJECT-NAME.vercel.app']
+    : '*',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
