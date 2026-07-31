@@ -1,0 +1,20 @@
+{
+  "name": "skywings-database",
+  "version": "1.0.0",
+  "description": "SkyWings Airlines - Database Schema & Seeds",
+  "scripts": {
+    "test-connection": "node seeds/test_mysql_connection.js",
+    "init": "node seeds/initialize_database.js",
+    "seed": "node seeds/insert_sample_data.js",
+    "seed:comprehensive": "node seeds/insert_comprehensive_data.js",
+    "seed:seats": "node seeds/insert_seats.js",
+    "seed:flights": "node seeds/add_more_flights.js",
+    "seed:additional": "node seeds/populate_additional_data.js",
+    "seed:all": "node seeds/insert_comprehensive_data.js && node seeds/insert_seats.js && node seeds/populate_seats_preferences_checkins.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.6.5",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1"
+  }
+}

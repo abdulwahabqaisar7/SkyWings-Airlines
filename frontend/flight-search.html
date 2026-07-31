@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Flights - SkyWings Airlines</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>✈️ SkyWings Airlines</h1>
+            </div>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="user-dashboard.html">Dashboard</a></li>
+                <li><a href="flight-search.html" class="active">Book Flight</a></li>
+                <li><a href="my-bookings.html">My Bookings</a></li>
+                <li><a href="check-in.html">Check-in</a></li>
+                <li><a href="about-contact.html">About & Contact</a></li>
+                <li><a href="user-profile.html">Profile</a></li>
+                <li id="authNavItem"><a href="index.html" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Search Section -->
+    <div class="page-header">
+        <div class="container">
+            <h1>Flights</h1>
+            <p>Search flights or check flight status</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Tabs -->
+        <div class="filter-tabs">
+            <button class="tab-btn active" onclick="showTab(event, 'search')">Search Flights</button>
+            <button class="tab-btn" onclick="showTab(event, 'status')">Flight Status</button>
+        </div>
+
+        <!-- Search Tab -->
+        <div id="searchTab" class="tab-content">
+            <div class="search-panel">
+            <form class="search-form detailed" onsubmit="handleFlightSearch(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>From</label>
+                        <select name="from" required>
+                            <option value="">Select City</option>
+                            <option value="NYC">New York (NYC)</option>
+                            <option value="LAX">Los Angeles (LAX)</option>
+                            <option value="CHI">Chicago (CHI)</option>
+                            <option value="MIA">Miami (MIA)</option>
+                            <option value="LON">London (LON)</option>
+                            <option value="PAR">Paris (PAR)</option>
+                            <option value="TOK">Tokyo (TOK)</option>
+                            <option value="DXB">Dubai (DXB)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>To</label>
+                        <select name="to" required>
+                            <option value="">Select City</option>
+                            <option value="NYC">New York (NYC)</option>
+                            <option value="LAX">Los Angeles (LAX)</option>
+                            <option value="CHI">Chicago (CHI)</option>
+                            <option value="MIA">Miami (MIA)</option>
+                            <option value="LON">London (LON)</option>
+                            <option value="PAR">Paris (PAR)</option>
+                            <option value="TOK">Tokyo (TOK)</option>
+                            <option value="DXB">Dubai (DXB)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Departure Date</label>
+                        <input type="date" name="departure" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Return Date (Optional)</label>
+                        <input type="date" name="return">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Passengers</label>
+                        <select name="passengers" required>
+                            <option value="1">1 Passenger</option>
+                            <option value="2">2 Passengers</option>
+                            <option value="3">3 Passengers</option>
+                            <option value="4">4 Passengers</option>
+                            <option value="5">5 Passengers</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Class</label>
+                        <select name="class" required>
+                            <option value="economy">Economy</option>
+                            <option value="business">Business</option>
+                            <option value="first">First Class</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Search Flights</button>
+            </form>
+        </div>
+
+            <!-- Search Results -->
+            <div class="search-results" id="searchResults" style="display: none;">
+                <h2>Available Flights</h2>
+                <div class="flights-list" id="flightsList">
+                    <!-- Flight results will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Tab -->
+        <div id="statusTab" class="tab-content" style="display: none;">
+            <div class="status-search">
+                <form onsubmit="handleStatusSearch(event)">
+                    <div class="form-group">
+                        <label>Flight Number</label>
+                        <input type="text" name="flightNumber" placeholder="e.g., FL123" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Check Status</button>
+                </form>
+            </div>
+
+            <div class="status-result" id="statusResult" style="display: none;">
+                <!-- Flight status will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div class="modal" id="bookingModal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 id="bookingModalTitle">Complete Your Booking</h2>
+                <span class="close" onclick="closeBookingModal()">&times;</span>
+            </div>
+            <form class="modal-form" id="bookingForm" onsubmit="handleBookingSubmit(event)">
+                <input type="hidden" id="bookingFlightId" name="flightId">
+                <input type="hidden" id="bookingFlightClass" name="class">
+                <input type="hidden" id="bookingNumPassengers" name="numPassengers">
+                
+                <div id="passengerForms">
+                    <!-- Passenger forms will be generated here -->
+                </div>
+                
+                <div class="modal-actions" style="margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeBookingModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm Booking</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Management - SkyWings Airlines</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>✈️ SkyWings Airlines - Admin</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-management.html" class="active">Management</a></li>
+                <li><a href="admin-reports.html">Reports</a></li>
+                <li><a href="about-contact.html">About & Contact</a></li>
+                <li><a href="index.html" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-header">
+        <div class="container">
+            <h1>Admin Management</h1>
+            <p>Manage flights, bookings, users, and aircraft</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Tabs -->
+        <div class="filter-tabs">
+            <button class="tab-btn active" onclick="showAdminTab(event, 'flights')">Flights</button>
+            <button class="tab-btn" onclick="showAdminTab(event, 'bookings')">Bookings</button>
+            <button class="tab-btn" onclick="showAdminTab(event, 'users')">Users</button>
+            <button class="tab-btn" onclick="showAdminTab(event, 'aircraft')">Aircraft</button>
+        </div>
+
+        <!-- Flights Tab -->
+        <div id="flightsTab" class="tab-content" style="display: block;">
+            <div class="admin-toolbar">
+                <button class="btn btn-primary" onclick="showAddFlightModal()">+ Add Flight</button>
+                <button class="btn btn-secondary" onclick="loadAdminFlights(adminFlightsState?.currentPage || 1, '')" title="Refresh flights">🔄 Refresh</button>
+                <div class="search-box">
+                    <input type="text" placeholder="Search flights..." onkeyup="searchFlights(this.value)">
+                </div>
+            </div>
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Flight ID</th>
+                            <th style="width: 200px;">Route</th>
+                            <th style="width: 180px;">Departure</th>
+                            <th style="width: 180px;">Arrival</th>
+                            <th style="width: 120px;">Status</th>
+                            <th style="width: 180px; min-width: 180px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" style="text-align: center;">Loading flights...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Bookings Tab -->
+        <div id="bookingsTab" class="tab-content" style="display: none;">
+            <div class="admin-toolbar">
+                <select onchange="filterBookings(this.value, 'admin')">
+                    <option value="all">All Status</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="pending">Pending</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <div class="search-box">
+                    <input type="text" placeholder="Search bookings..." onkeyup="searchBookings(this.value)">
+                </div>
+            </div>
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>User</th>
+                            <th>Flight</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" style="text-align: center;">Loading bookings...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="usersTab" class="tab-content" style="display: none;">
+            <div class="admin-toolbar">
+                <div class="search-box">
+                    <input type="text" placeholder="Search users..." onkeyup="searchUsers(this.value)">
+                </div>
+            </div>
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" style="text-align: center;">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Aircraft Tab -->
+        <div id="aircraftTab" class="tab-content" style="display: none;">
+            <div class="admin-toolbar">
+                <button class="btn btn-primary" onclick="showAddAircraftModal()">+ Add Aircraft</button>
+            </div>
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Aircraft ID</th>
+                            <th>Model</th>
+                            <th>Registration</th>
+                            <th>Capacity</th>
+                            <th>Status</th>
+                            <th style="width: 180px; min-width: 180px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" style="text-align: center;">Loading aircraft...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flight Modal -->
+    <div class="modal" id="flightModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Flight</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form class="modal-form" onsubmit="handleFlightSubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Flight Number</label>
+                        <input type="text" name="flightNumber" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Aircraft</label>
+                        <select name="aircraftId" required>
+                            <option value="1">Boeing 737-800 (SW-001)</option>
+                            <option value="2">Boeing 777-300ER (SW-002)</option>
+                            <option value="3">Airbus A320 (SW-003)</option>
+                            <option value="4">Airbus A350 (SW-004)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>From</label>
+                        <select name="from" required>
+                            <option value="">Select Airport</option>
+                            <option value="NYC">New York (NYC)</option>
+                            <option value="LAX">Los Angeles (LAX)</option>
+                            <option value="CHI">Chicago (CHI)</option>
+                            <option value="MIA">Miami (MIA)</option>
+                            <option value="LON">London (LON)</option>
+                            <option value="PAR">Paris (PAR)</option>
+                            <option value="TOK">Tokyo (TOK)</option>
+                            <option value="DXB">Dubai (DXB)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>To</label>
+                        <select name="to" required>
+                            <option value="">Select Airport</option>
+                            <option value="NYC">New York (NYC)</option>
+                            <option value="LAX">Los Angeles (LAX)</option>
+                            <option value="CHI">Chicago (CHI)</option>
+                            <option value="MIA">Miami (MIA)</option>
+                            <option value="LON">London (LON)</option>
+                            <option value="PAR">Paris (PAR)</option>
+                            <option value="TOK">Tokyo (TOK)</option>
+                            <option value="DXB">Dubai (DXB)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Departure</label>
+                        <input type="datetime-local" name="departure" required max="2100-12-31T23:59" maxlength="16" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}">
+                    </div>
+                    <div class="form-group">
+                        <label>Arrival</label>
+                        <input type="datetime-local" name="arrival" required max="2100-12-31T23:59" maxlength="16" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Base Price ($)</label>
+                        <input type="number" name="basePrice" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Business Price ($)</label>
+                        <input type="number" name="businessPrice" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Class Price ($)</label>
+                        <input type="number" name="firstClassPrice" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" required>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="boarding">Boarding</option>
+                            <option value="delayed">Delayed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Aircraft Modal -->
+    <div class="modal" id="aircraftModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="aircraftModalTitle">Add New Aircraft</h2>
+                <button class="close" onclick="closeAircraftModal()" style="background: none; border: none; font-size: 2rem; cursor: pointer; color: rgba(255, 255, 255, 0.8); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; line-height: 1;">&times;</button>
+            </div>
+            <form class="modal-form" onsubmit="handleAircraftSubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" name="model" required placeholder="e.g., Boeing 737-800">
+                    </div>
+                    <div class="form-group">
+                        <label>Registration</label>
+                        <input type="text" name="registration" required placeholder="e.g., SW-005" style="text-transform: uppercase;">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Capacity</label>
+                        <input type="number" name="capacity" required min="1" max="1000" placeholder="Number of seats">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" required>
+                            <option value="active">Active</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="retired">Retired</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAircraftModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Aircraft</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Optimized page load - only load flights when flights tab is visible
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load flights immediately if flights tab is active
+            if (document.getElementById('flightsTab') && document.getElementById('flightsTab').style.display !== 'none') {
+                loadAdminFlights(1, '');
+            }
+        });
+        
+        // Override tab switching to load data only when needed
+        const originalShowAdminTab = window.showAdminTab;
+        window.showAdminTab = function(event, tabName) {
+            if (originalShowAdminTab) {
+                originalShowAdminTab(event, tabName);
+            }
+            
+            // Load data when tab becomes visible
+            if (tabName === 'flights' && typeof loadAdminFlights === 'function') {
+                loadAdminFlights(1, '');
+            } else if (tabName === 'bookings' && typeof loadAdminBookings === 'function') {
+                loadAdminBookings();
+            } else if (tabName === 'users' && typeof loadAdminUsers === 'function') {
+                loadAdminUsers();
+            } else if (tabName === 'aircraft' && typeof loadAdminAircraft === 'function') {
+                loadAdminAircraft();
+            }
+        };
+    </script>
+</body>
+</html>
+

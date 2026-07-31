@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - SkyWings Airlines</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>✈️ SkyWings Airlines - Admin</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="admin-dashboard.html" class="active">Dashboard</a></li>
+                <li><a href="admin-management.html">Management</a></li>
+                <li><a href="admin-reports.html">Reports</a></li>
+                <li><a href="about-contact.html">About & Contact</a></li>
+                <li><a href="index.html" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard-container">
+        <div class="container">
+            <div class="dashboard-header">
+                <h1>Hassaan Ahmad's Dashboard</h1>
+                <p>Manage your airline operations</p>
+            </div>
+
+            <!-- Admin Stats -->
+            <div class="stats-grid">
+                <div class="stat-card admin-stat">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <h3 id="totalUsers">0</h3>
+                        <p>Total Users</p>
+                    </div>
+                </div>
+                <div class="stat-card admin-stat">
+                    <div class="stat-icon">✈️</div>
+                    <div class="stat-info">
+                        <h3 id="totalFlights">0</h3>
+                        <p>Total Flights</p>
+                    </div>
+                </div>
+                <div class="stat-card admin-stat">
+                    <div class="stat-icon">🎫</div>
+                    <div class="stat-info">
+                        <h3 id="totalBookings">0</h3>
+                        <p>Total Bookings</p>
+                    </div>
+                </div>
+                <div class="stat-card admin-stat">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-info">
+                        <h3>$<span id="totalRevenue">0</span></h3>
+                        <p>Total Revenue</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="dashboard-section">
+                <h2>Quick Actions</h2>
+                <div class="action-grid">
+                    <a href="admin-management.html" class="action-card">
+                        <div class="action-icon">✈️</div>
+                        <h3>Management</h3>
+                        <p>Manage flights, bookings, users & aircraft</p>
+                    </a>
+                    <a href="admin-reports.html" class="action-card">
+                        <div class="action-icon">📊</div>
+                        <h3>Reports</h3>
+                        <p>View analytics and reports</p>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Report Graphs -->
+            <div class="dashboard-section">
+                <h2>Analytics & Reports</h2>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Revenue Trend (Last 6 Months)</h3>
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Booking Trend (Last 6 Months)</h3>
+                        <canvas id="bookingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
+

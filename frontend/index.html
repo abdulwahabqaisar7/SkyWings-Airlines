@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyWings Airlines - Home</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>✈️ SkyWings Airlines</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="flight-search.html">Flights</a></li>
+                <li><a href="about-contact.html">About & Contact</a></li>
+                <li><a href="login.html" class="btn-login">Login</a></li>
+                <li><a href="register.html" class="btn-register">Sign Up</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Welcome to SkyWings Airlines</h1>
+            <p>Book your flights easily and quickly</p>
+            <div class="hero-buttons">
+                <a href="flight-search.html" class="btn btn-primary">Search Flight</a>
+                <a href="login.html" class="btn btn-secondary">Login</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Airline Advertisement (for guests) -->
+    <section class="airline-ad" id="airlineAd">
+        <div class="container">
+            <div class="ad-content">
+                <div class="ad-text">
+                    <h2 class="ad-title">Experience the Sky Like Never Before</h2>
+                    <p class="ad-subtitle">Join thousands of satisfied travelers who choose SkyWings Airlines</p>
+                    <div class="ad-features">
+                        <div class="ad-feature-item">
+                            <span class="ad-feature-icon">✈️</span>
+                            <div>
+                                <h3>Premium Comfort</h3>
+                                <p>Spacious seats and world-class amenities</p>
+                            </div>
+                        </div>
+                        <div class="ad-feature-item">
+                            <span class="ad-feature-icon">🌍</span>
+                            <div>
+                                <h3>Global Destinations</h3>
+                                <p>Fly to over 100 destinations worldwide</p>
+                            </div>
+                        </div>
+                        <div class="ad-feature-item">
+                            <span class="ad-feature-icon">⭐</span>
+                            <div>
+                                <h3>5-Star Service</h3>
+                                <p>Award-winning hospitality and care</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ad-cta">
+                        <a href="register.html" class="btn btn-primary btn-large">Start Your Journey</a>
+                        <a href="about-contact.html" class="btn btn-secondary btn-large">Learn More</a>
+                    </div>
+                </div>
+                <div class="ad-visual">
+                    <div class="ad-visual-content">
+                        <div class="ad-badge">#1 Choice</div>
+                        <div class="ad-stats">
+                            <div class="ad-stat">
+                                <div class="ad-stat-number">500K+</div>
+                                <div class="ad-stat-label">Happy Travelers</div>
+                            </div>
+                            <div class="ad-stat">
+                                <div class="ad-stat-number">100+</div>
+                                <div class="ad-stat-label">Destinations</div>
+                            </div>
+                            <div class="ad-stat">
+                                <div class="ad-stat-number">99%</div>
+                                <div class="ad-stat-label">On-Time Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Search (for logged-in users only) -->
+    <section class="quick-search" id="quickSearch" style="display: none;">
+        <div class="container">
+            <div class="search-box">
+                <h2>Find Your Perfect Flight</h2>
+                <form class="search-form" onsubmit="handleQuickSearch(event)">
+                    <div class="form-group">
+                        <label>From</label>
+                        <select name="from" required>
+                            <option value="">Select City</option>
+                            <option value="NYC">New York</option>
+                            <option value="LAX">Los Angeles</option>
+                            <option value="LON">London</option>
+                            <option value="PAR">Paris</option>
+                            <option value="TOK">Tokyo</option>
+                            <option value="DXB">Dubai</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>To</label>
+                        <select name="to" required>
+                            <option value="">Select City</option>
+                            <option value="NYC">New York</option>
+                            <option value="LAX">Los Angeles</option>
+                            <option value="LON">London</option>
+                            <option value="PAR">Paris</option>
+                            <option value="TOK">Tokyo</option>
+                            <option value="DXB">Dubai</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Departure</label>
+                        <input type="date" name="departure" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Passengers</label>
+                        <select name="passengers" required>
+                            <option value="1">1 Passenger</option>
+                            <option value="2">2 Passengers</option>
+                            <option value="3">3 Passengers</option>
+                            <option value="4">4 Passengers</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search Flights</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Why Choose SkyWings?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Best Prices</h3>
+                    <p>Competitive pricing with no hidden fees</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Fast Booking</h3>
+                    <p>Book your flight in minutes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Safe & Secure</h3>
+                    <p>Your data is protected with us</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⭐</div>
+                    <h3>24/7 Support</h3>
+                    <p>Round-the-clock customer service</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>SkyWings Airlines</h3>
+                    <p>Your trusted partner in air travel</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="flight-search.html">Flights</a></li>
+                        <li><a href="about-contact.html">About & Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Services</h4>
+                    <ul>
+                        <li><a href="flight-search.html">Book Flight</a></li>
+                        <li><a href="my-bookings.html">My Bookings</a></li>
+                        <li><a href="check-in.html">Check-in</a></li>
+                        <li><a href="flight-search.html">Flight Status</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>Email: info@skywings.com</p>
+                    <p>Phone: +92 333 123456</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SkyWings Airlines. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
+
