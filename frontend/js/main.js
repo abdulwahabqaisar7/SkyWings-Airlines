@@ -2,7 +2,7 @@
 // ========== API CONFIGURATION ==========
 const API_BASE_URL = window.location.origin.includes('localhost') 
     ? 'http://localhost:3000/api' 
-    : '/api';
+    : 'https://skywings-backend-xql6.onrender.com/api';
 
 // Helper function to get auth token
 function getAuthToken() {
@@ -226,7 +226,16 @@ async function apiRequest(endpoint, options = {}) {
         ...options.headers
     };
 
-    const url = `${API_BASE_URL}${endpoint}`;
+    let url;
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+        url = endpoint;
+    } else {
+        const cleanBase = API_BASE_URL.replace(/\/+$/, '');
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        url = `${cleanBase}${cleanEndpoint}`;
+    }
+    // Safeguard against accidental double protocol prefixes (e.g. https://https://)
+    url = url.replace(/^https?:\/\/https?:\/\//, 'https://');
     console.log(`API Request: ${options.method || 'GET'} ${url}`);
     if (options.body) {
         console.log('Request body:', options.body);
@@ -2052,27 +2061,12 @@ async function loadUserDashboardData() {
                 } else {
                     recentTable.innerHTML = recentBookings.map(booking => {
                         const date = new Date(booking.booking_date);
-                        
-                        // Apply the same status logic as my-bookings.html
-                        const arr = new Date(booking.arrival_datetime);
-                        const now = new Date();
-                        const flightHasArrived = arr < now;
-                        
-                        let displayStatus = booking.status || 'pending';
-                        if (flightHasArrived && booking.status === 'confirmed') {
-                            const hasSeats = booking.passengers && booking.passengers.some(p => p.seat_number && p.seat_number.trim() !== '');
-                            displayStatus = hasSeats ? 'completed' : 'missed';
-                        }
-                        
-                        const displayStatusText = String(displayStatus).toLowerCase();
-                        const displayStatusCapitalized = displayStatusText.charAt(0).toUpperCase() + displayStatusText.slice(1);
-                        
                         return `
                             <tr>
                                 <td>${booking.booking_reference || 'N/A'}</td>
                                 <td>${booking.flight_number || 'N/A'}</td>
                                 <td>${date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                                <td><span class="status-badge status-${displayStatusText}" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; visibility: visible !important; opacity: 1 !important; min-width: 90px; text-align: center !important; line-height: 1 !important; margin: 0 auto !important;">${displayStatusCapitalized}</span></td>
+                                <td><span class="status-badge status-${String(booking.status || 'pending').toLowerCase()}" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; visibility: visible !important; opacity: 1 !important; min-width: 90px; text-align: center !important; line-height: 1 !important; margin: 0 auto !important;">${String(booking.status || 'pending').charAt(0).toUpperCase() + String(booking.status || 'pending').slice(1)}</span></td>
                                 <td><a href="my-bookings.html" class="btn btn-sm">View</a></td>
                             </tr>
                         `;
@@ -5254,12 +5248,3 @@ function handleContactSubmit(event) {
     alert('Thank you! We will contact you soon.');
     event.target.reset();
 }
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('flightModal');
-    if (event.target === modal) {
-        closeModal();
-    }
-}
-
