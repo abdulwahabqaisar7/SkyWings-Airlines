@@ -173,6 +173,12 @@ function updateNavbar() {
                 logoutLink.parentElement.remove();
             }
             
+            // Change user-about-contact to about-contact
+            const aboutLink = navMenu.querySelector('a[href="user-about-contact.html"]');
+            if (aboutLink) {
+                aboutLink.href = 'about-contact.html';
+            }
+            
             // Add home link if doesn't exist
             const homeLink = navMenu.querySelector('a[href="index.html"]:not([onclick*="handleLogout"])');
             if (!homeLink) {
@@ -192,6 +198,14 @@ function updateNavbar() {
                     li.innerHTML = '<a href="login.html" class="btn-login">Login</a>';
                     navMenu.appendChild(li);
                 }
+            }
+            
+            // Add Sign Up button
+            const signUpExists = navMenu.querySelector('a[href*="register"], a.btn-register');
+            if (!signUpExists) {
+                const li = document.createElement('li');
+                li.innerHTML = '<a href="register.html" class="btn-register">Sign Up</a>';
+                navMenu.appendChild(li);
             }
         } else {
             // For other pages
@@ -5262,4 +5276,3 @@ window.onclick = function(event) {
         closeModal();
     }
 }
-
