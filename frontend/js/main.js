@@ -226,7 +226,16 @@ async function apiRequest(endpoint, options = {}) {
         ...options.headers
     };
 
-    const url = `${API_BASE_URL}${endpoint}`;
+    let url;
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+        url = endpoint;
+    } else {
+        const cleanBase = API_BASE_URL.replace(/\/+$/, '');
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        url = `${cleanBase}${cleanEndpoint}`;
+    }
+    // Safeguard against accidental double protocol prefixes (e.g. https://https://)
+    url = url.replace(/^https?:\/\/https?:\/\//, 'https://');
     console.log(`API Request: ${options.method || 'GET'} ${url}`);
     if (options.body) {
         console.log('Request body:', options.body);
@@ -5239,12 +5248,3 @@ function handleContactSubmit(event) {
     alert('Thank you! We will contact you soon.');
     event.target.reset();
 }
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('flightModal');
-    if (event.target === modal) {
-        closeModal();
-    }
-}
-
