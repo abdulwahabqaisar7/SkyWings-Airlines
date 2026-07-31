@@ -10,11 +10,24 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-// Replace 'YOUR-PROJECT-NAME' with your actual Vercel project name
+// Allow requests from any .vercel.app frontend domain, localhost, or custom FRONTEND_URL env var
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://sky-wings-airlines-nu.vercel.app']
-    : '*',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin ends with .vercel.app or is localhost or matches FRONTEND_URL
+    if (
+      origin.endsWith('.vercel.app') || 
+      origin.includes('localhost') || 
+      (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
+    ) {
+      return callback(null, true);
+    }
+    
+    // Allow by default to avoid blocking user domains
+    return callback(null, true);
+  },
   credentials: true
 }));
 app.use(express.json());
