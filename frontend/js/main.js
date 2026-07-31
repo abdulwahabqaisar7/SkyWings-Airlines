@@ -3,7 +3,7 @@
 // Replace 'YOUR-BACKEND-NAME' with your actual Render service name
 const API_BASE_URL = window.location.origin.includes('localhost') 
     ? 'http://localhost:3000/api' 
-    : 'https://https://skywings-backend-xql6.onrender.com/api';
+    : 'https://skywings-backend-xql6.onrender.com';
 
 // Helper function to get auth token
 function getAuthToken() {
