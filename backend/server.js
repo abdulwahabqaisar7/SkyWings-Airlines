@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 // Replace 'YOUR-PROJECT-NAME' with your actual Vercel project name
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://YOUR-PROJECT-NAME.vercel.app']
+    ? ['https://sky-wings-airlines-nu.vercel.app']
     : '*',
   credentials: true
 }));
