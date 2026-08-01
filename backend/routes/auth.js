@@ -96,6 +96,14 @@ router.post('/register', [
     // Generate token
     const token = generateToken(userId, email, 'user');
 
+    // Set httpOnly cookie so the browser sends it automatically with requests
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.status(201).json({
       success: true,
       message: 'Registration successful',
@@ -171,6 +179,14 @@ router.post('/login', [
     // Generate token
     const token = generateToken(user.user_id, user.email, user.role);
 
+    // Set httpOnly cookie so the browser sends it automatically with requests
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.json({
       success: true,
       message: 'Login successful',
@@ -240,8 +256,8 @@ router.get('/check', authenticate, async (req, res) => {
 
 // ========== LOGOUT ==========
 router.post('/logout', (req, res) => {
-  // Logout is handled client-side by removing token
-  // This endpoint is for consistency
+  // Clear the httpOnly cookie on logout
+  res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' });
   res.json({
     success: true,
     message: 'Logged out successfully'

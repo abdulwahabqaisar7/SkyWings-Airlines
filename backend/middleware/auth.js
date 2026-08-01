@@ -14,17 +14,27 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 // Middleware to verify JWT token
 async function authenticate(req, res, next) {
   try {
+    let token;
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+    // Prefer Authorization header if present
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.headers.cookie) {
+      // Fallback to cookie named 'token' (httpOnly cookie set by server)
+      const match = req.headers.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('token='));
+      if (match) {
+        token = decodeURIComponent(match.split('=')[1]);
+      }
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: 'Unauthorized: No token provided'
       });
     }
 
-    const token = authHeader.substring(7);
-    
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       

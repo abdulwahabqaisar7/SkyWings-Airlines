@@ -8,8 +8,10 @@ const API_BASE_URL = window.location.hostname.endsWith('.vercel.app')
     : `${window.location.origin}/api`;
 
 // Helper function to get auth token
+// Tokens are now delivered via httpOnly cookie named 'token'.
+// Return null here — fetch requests use credentials: 'include'.
 function getAuthToken() {
-    return localStorage.getItem('authToken');
+    return null;
 }
 
 // Update navbar based on login status
@@ -239,10 +241,10 @@ function updateNavbar() {
 
 // Helper function to make API requests
 async function apiRequest(endpoint, options = {}) {
-    const token = getAuthToken();
+    // Auth token is delivered via httpOnly cookie; include credentials so the
+    // browser sends the cookie automatically. Do not attach Authorization header.
     const headers = {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers
     };
 
@@ -255,7 +257,8 @@ async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(url, {
             ...options,
-            headers
+            headers,
+            credentials: 'include'
         });
 
         console.log(`API Response status: ${response.status} ${response.statusText}`);
@@ -1032,18 +1035,13 @@ async function handleLogin(event) {
             throw new Error('User data not found in response');
         }
 
-        if (!response.data.token) {
-            throw new Error('Authentication token not received');
-        }
-
-        // Store authentication data
-        localStorage.setItem('authToken', response.data.token);
+        // Store user info and login flag (token is set as httpOnly cookie)
         localStorage.setItem('userRole', response.data.user.role);
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userId', response.data.user.userId);
         localStorage.setItem('userName', `${response.data.user.firstName} ${response.data.user.lastName}`);
         
-        console.log('Auth data stored, redirecting...');
+        console.log('Auth data stored (client-side), redirecting...');
         console.log('User role:', response.data.user.role);
         
         // Get redirect destination if exists
