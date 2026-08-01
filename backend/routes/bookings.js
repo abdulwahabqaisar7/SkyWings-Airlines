@@ -27,7 +27,8 @@ router.post('/create', async (req, res) => {
     // Get flight details
     const [flightRows] = await connection.execute(
       `SELECT f.*, a.capacity,
-        CASE 
+        (f.departure_datetime <= NOW()) as has_departed,
+        CASE
           WHEN ? = 'economy' THEN f.base_price
           WHEN ? = 'business' THEN f.business_price
           WHEN ? = 'first' THEN f.first_class_price
@@ -50,7 +51,10 @@ router.post('/create', async (req, res) => {
     const flightData = flightRows[0];
 
     // A departed flight can never be checked in, so it must not be bookable.
-    if (new Date(flightData.departure_datetime) <= new Date()) {
+    // "Departed" is decided by the database clock (as the search query does),
+    // so the answer does not depend on the app server's timezone matching
+    // MySQL's - they differ between the Docker and native setups.
+    if (Number(flightData.has_departed) === 1) {
       await connection.rollback();
       return res.status(400).json({
         success: false,

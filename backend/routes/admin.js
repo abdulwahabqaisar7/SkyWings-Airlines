@@ -9,6 +9,21 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireAdmin);
 
+// Normalise an incoming date/time into a JS Date for the driver to bind.
+//
+// Values arrive either as an ISO instant from the browser ("...T10:01:00.000Z")
+// or as a plain "YYYY-MM-DD HH:mm:ss" from scripts and curl. Binding a Date
+// makes mysql2 write it in the SAME timezone frame it uses when reading rows
+// back (dateStrings is false), so a flight keeps its wall clock whether the app
+// runs in a UTC container or natively in the developer's own timezone.
+// Passing the raw string through instead stored the client's idea of the clock
+// and shifted flights by the timezone offset on non-UTC (native) setups.
+function toDbDateTime(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+}
+
 // ========== STATISTICS ==========
 router.get('/stats', async (req, res) => {
   try {
@@ -182,10 +197,10 @@ router.post('/flights', async (req, res) => {
     }
 
     // Validate dates
-    const departure = new Date(departure_datetime);
-    const arrival = new Date(arrival_datetime);
+    const departure = toDbDateTime(departure_datetime);
+    const arrival = toDbDateTime(arrival_datetime);
 
-    if (isNaN(departure.getTime()) || isNaN(arrival.getTime())) {
+    if (!departure || !arrival) {
       return res.status(400).json({
         success: false,
         message: 'Invalid date format'
@@ -215,8 +230,8 @@ router.post('/flights', async (req, res) => {
         parseInt(aircraft_id),
         from_airport_code,
         to_airport_code,
-        departure_datetime,
-        arrival_datetime,
+        departure,
+        arrival,
         parseFloat(base_price),
         parseFloat(calculatedBusinessPrice),
         parseFloat(calculatedFirstClassPrice),
@@ -307,14 +322,31 @@ router.put('/flights/:id', async (req, res) => {
       params.push(to_airport_code);
     }
 
-    if (departure_datetime) {
-      updates.push('departure_datetime = ?');
-      params.push(departure_datetime);
+    const newDeparture = toDbDateTime(departure_datetime);
+    const newArrival = toDbDateTime(arrival_datetime);
+
+    if (departure_datetime && !newDeparture) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid departure date format'
+      });
     }
 
-    if (arrival_datetime) {
+    if (arrival_datetime && !newArrival) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid arrival date format'
+      });
+    }
+
+    if (newDeparture) {
+      updates.push('departure_datetime = ?');
+      params.push(newDeparture);
+    }
+
+    if (newArrival) {
       updates.push('arrival_datetime = ?');
-      params.push(arrival_datetime);
+      params.push(newArrival);
     }
 
     if (base_price !== undefined && base_price !== null) {
@@ -345,15 +377,11 @@ router.put('/flights/:id', async (req, res) => {
     }
 
     // Validate dates if both are being updated
-    if (departure_datetime && arrival_datetime) {
-      const dep = new Date(departure_datetime);
-      const arr = new Date(arrival_datetime);
-      if (arr <= dep) {
-        return res.status(400).json({
-          success: false,
-          message: 'Arrival time must be after departure time'
-        });
-      }
+    if (newDeparture && newArrival && newArrival <= newDeparture) {
+      return res.status(400).json({
+        success: false,
+        message: 'Arrival time must be after departure time'
+      });
     }
 
     params.push(flightId);

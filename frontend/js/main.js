@@ -3709,10 +3709,10 @@ async function handleFlightSubmit(event) {
         return;
     }
     
-    // Convert the datetime-local value (local time) to the UTC MySQL datetime
-    // the API stores. Sending the local wall clock as-is shifted every flight
-    // by the browser's timezone offset once it was rendered back.
-    const departureDateTime = toMysqlDateTime(departure);
+    // Send the datetime-local value as an absolute instant; the API normalises
+    // it for storage. Sending the raw local wall clock shifted every flight by
+    // the browser's timezone offset once it was rendered back.
+    const departureDateTime = toApiDateTime(departure);
     if (departure && !departureDateTime) {
         alert('Invalid departure date format');
         return;
@@ -3723,9 +3723,9 @@ async function handleFlightSubmit(event) {
     if (!arrival && departure) {
         const depDate = new Date(departure);
         depDate.setHours(depDate.getHours() + 6);
-        arrivalDateTime = toMysqlDateTime(depDate);
+        arrivalDateTime = toApiDateTime(depDate);
     } else {
-        arrivalDateTime = toMysqlDateTime(arrival);
+        arrivalDateTime = toApiDateTime(arrival);
         if (arrival && !arrivalDateTime) {
             alert('Invalid arrival date format');
             return;
@@ -3802,14 +3802,19 @@ async function handleFlightSubmit(event) {
     }
 }
 
-// Convert a local date/datetime-local value into the UTC "YYYY-MM-DD HH:mm:ss"
-// string the API stores. Counterpart of toDateTimeLocalValue() below, so a
-// flight opened in the edit modal and saved unchanged keeps its exact time.
-function toMysqlDateTime(value) {
+// Convert a datetime-local value (local time) into an unambiguous ISO instant
+// for the API. Counterpart of toDateTimeLocalValue() below, so a flight opened
+// in the edit modal and saved unchanged keeps its exact time.
+//
+// Send the instant, not a wall clock: the server decides how to store it. A
+// pre-formatted "YYYY-MM-DD HH:mm:ss" would carry no timezone and shift the
+// flight on setups whose database is not on UTC (see toDbDateTime in
+// backend/routes/admin.js).
+function toApiDateTime(value) {
     if (!value) return null;
     const date = new Date(value);
     if (isNaN(date.getTime())) return null;
-    return date.toISOString().slice(0, 19).replace('T', ' ');
+    return date.toISOString();
 }
 
 // Format a date for a <input type="datetime-local"> in LOCAL time.
