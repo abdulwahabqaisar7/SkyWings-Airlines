@@ -397,17 +397,26 @@ router.delete('/flights/:id', async (req, res) => {
       });
     }
 
-    // Check if flight has active bookings
+    // bookings.flight_id is ON DELETE RESTRICT, so *any* booking row blocks the
+    // delete - including the cancelled and completed ones kept for history.
+    // Counting only active bookings told the admin to "cancel bookings first",
+    // which could never work and surfaced a raw SQL error instead.
     const bookingsResult = await queryOne(
-      'SELECT COUNT(*) as count FROM bookings WHERE flight_id = ? AND status NOT IN ("cancelled", "completed")',
+      `SELECT COUNT(*) as total,
+              SUM(status NOT IN ('cancelled', 'completed')) as active
+         FROM bookings WHERE flight_id = ?`,
       [flightId]
     );
 
-    const activeBookings = bookingsResult?.count || 0;
-    if (activeBookings > 0) {
+    const totalBookings = Number(bookingsResult?.total || 0);
+    const activeBookings = Number(bookingsResult?.active || 0);
+
+    if (totalBookings > 0) {
       return res.status(400).json({
         success: false,
-        message: `Cannot delete flight with ${activeBookings} active booking(s). Cancel bookings first.`
+        message: activeBookings > 0
+          ? `Cannot delete this flight: ${activeBookings} active booking(s) reference it. Set its status to "cancelled" instead.`
+          : `Cannot delete this flight: ${totalBookings} past booking(s) reference it. Set its status to "cancelled" instead.`
       });
     }
 
@@ -420,6 +429,15 @@ router.delete('/flights/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Delete flight error:', error);
+
+    // Safety net if a booking is created between the check above and the delete
+    if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete this flight: other records still reference it. Set its status to "cancelled" instead.'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Failed to delete flight: ' + error.message
