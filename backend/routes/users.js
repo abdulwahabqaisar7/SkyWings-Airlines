@@ -71,13 +71,15 @@ router.put('/profile', [
     .isEmail().withMessage('Valid email is required')
     .normalizeEmail()
     .isLength({ max: 255 }).withMessage('Email is too long'),
+  // `values: 'falsy'` so clearing an optional field (sent as "") is treated as
+  // "no value" instead of failing the format check.
   body('phone')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .matches(/^[\d\s\-\+\(\)]+$/).withMessage('Invalid phone number format')
     .isLength({ max: 20 }).withMessage('Phone number is too long'),
   body('dateOfBirth')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601().withMessage('Invalid date format')
     .custom((value) => {
       const dob = new Date(value);
@@ -89,7 +91,7 @@ router.put('/profile', [
       return true;
     }),
   body('address')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 500 }).withMessage('Address is too long')
 ], async (req, res) => {
@@ -291,7 +293,7 @@ router.post('/passengers', [
     .isLength({ min: 2, max: 100 }).withMessage('Last name must be between 2 and 100 characters')
     .matches(/^[a-zA-Z\s'-]+$/).withMessage('Last name can only contain letters, spaces, hyphens, and apostrophes'),
   body('dateOfBirth')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601().withMessage('Invalid date format')
     .custom((value) => {
       if (value) {
@@ -305,11 +307,11 @@ router.post('/passengers', [
       return true;
     }),
   body('passportNumber')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 50 }).withMessage('Passport number is too long'),
   body('nationality')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 100 }).withMessage('Nationality is too long')
 ], async (req, res) => {

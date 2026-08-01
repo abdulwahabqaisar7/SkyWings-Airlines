@@ -300,35 +300,10 @@
         </div>
     </div>
 
+    <!-- Initial load and per-tab loading are both handled in js/main.js
+         (DOMContentLoaded + showAdminTab). A wrapper here used to repeat both,
+         so every tab fetched its data twice. -->
     <script src="js/main.js"></script>
-    <script>
-        // Optimized page load - only load flights when flights tab is visible
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load flights immediately if flights tab is active
-            if (document.getElementById('flightsTab') && document.getElementById('flightsTab').style.display !== 'none') {
-                loadAdminFlights(1, '');
-            }
-        });
-        
-        // Override tab switching to load data only when needed
-        const originalShowAdminTab = window.showAdminTab;
-        window.showAdminTab = function(event, tabName) {
-            if (originalShowAdminTab) {
-                originalShowAdminTab(event, tabName);
-            }
-            
-            // Load data when tab becomes visible
-            if (tabName === 'flights' && typeof loadAdminFlights === 'function') {
-                loadAdminFlights(1, '');
-            } else if (tabName === 'bookings' && typeof loadAdminBookings === 'function') {
-                loadAdminBookings();
-            } else if (tabName === 'users' && typeof loadAdminUsers === 'function') {
-                loadAdminUsers();
-            } else if (tabName === 'aircraft' && typeof loadAdminAircraft === 'function') {
-                loadAdminAircraft();
-            }
-        };
-    </script>
 </body>
 </html>
 

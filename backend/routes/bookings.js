@@ -49,6 +49,15 @@ router.post('/create', async (req, res) => {
 
     const flightData = flightRows[0];
 
+    // A departed flight can never be checked in, so it must not be bookable.
+    if (new Date(flightData.departure_datetime) <= new Date()) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'This flight has already departed and can no longer be booked'
+      });
+    }
+
     // Check available seats
     const [bookedSeatsRows] = await connection.execute(
       `SELECT COUNT(*) as booked_seats
@@ -185,7 +194,12 @@ router.get('/list', async (req, res) => {
         dep.city as from_city,
         arr.airport_code as to_code,
         arr.airport_name as to_name,
-        arr.city as to_city
+        arr.city as to_city,
+        (SELECT COUNT(*)
+           FROM booking_passengers bp
+          WHERE bp.booking_id = b.booking_id
+            AND bp.seat_number IS NOT NULL
+            AND bp.seat_number <> '') as seated_passengers
       FROM bookings b
       INNER JOIN flights f ON b.flight_id = f.flight_id
       INNER JOIN airports dep ON f.from_airport_code = dep.airport_code
@@ -375,10 +389,13 @@ router.post('/:id/update-status', async (req, res) => {
       });
     }
 
-    if (!status || !['completed', 'missed', 'cancelled'].includes(status)) {
+    // Only statuses that exist in the bookings.status ENUM may be persisted.
+    // "missed" is a display-only state derived from the flight time and is
+    // deliberately not accepted here - writing it fails with a truncation error.
+    if (!status || !['completed', 'cancelled'].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Valid status is required (completed, missed, or cancelled)'
+        message: 'Valid status is required (completed or cancelled)'
       });
     }
 

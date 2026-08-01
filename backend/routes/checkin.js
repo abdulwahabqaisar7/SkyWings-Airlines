@@ -197,9 +197,9 @@ router.post('/confirm', [
   const connection = await require('../config/database').pool.getConnection();
   
   try {
+    // Note: no rollback here - the transaction has not started yet.
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      await connection.rollback();
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -293,6 +293,42 @@ router.post('/confirm', [
       });
     }
 
+    const requestedSeats = seat_numbers.map(seat => seat.trim().toUpperCase());
+
+    // Reject duplicates inside this request
+    if (new Set(requestedSeats).size !== requestedSeats.length) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'The same seat cannot be assigned to more than one passenger'
+      });
+    }
+
+    // Reject seats already taken by another booking on the same flight
+    const [takenSeatRows] = await connection.execute(
+      `SELECT DISTINCT bp.seat_number
+         FROM booking_passengers bp
+         INNER JOIN bookings b ON bp.booking_id = b.booking_id
+        WHERE b.flight_id = ?
+          AND b.booking_id <> ?
+          AND b.status != 'cancelled'
+          AND bp.seat_number IS NOT NULL`,
+      [bookingData.flight_id, bookingId]
+    );
+
+    const takenSeats = new Set(
+      (takenSeatRows || []).map(row => String(row.seat_number).trim().toUpperCase())
+    );
+    const conflicts = requestedSeats.filter(seat => takenSeats.has(seat));
+
+    if (conflicts.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({
+        success: false,
+        message: `Seat(s) ${conflicts.join(', ')} are already taken. Please choose different seats.`
+      });
+    }
+
     // Create check-in record
     await connection.execute(
       `INSERT INTO check_ins (booking_id, check_in_datetime, gate_number, boarding_time, status)
@@ -301,10 +337,10 @@ router.post('/confirm', [
     );
 
     // Update seat numbers for passengers
-    for (let i = 0; i < passengerRows.length && i < seat_numbers.length; i++) {
+    for (let i = 0; i < passengerRows.length; i++) {
       await connection.execute(
         'UPDATE booking_passengers SET seat_number = ? WHERE booking_passenger_id = ?',
-        [seat_numbers[i].trim().toUpperCase(), passengerRows[i].booking_passenger_id]
+        [requestedSeats[i], passengerRows[i].booking_passenger_id]
       );
     }
 

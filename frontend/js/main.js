@@ -1,8 +1,11 @@
 
 // ========== API CONFIGURATION ==========
-const API_BASE_URL = window.location.origin.includes('localhost') 
-    ? 'http://localhost:3000/api' 
-    : 'https://skywings-backend-xql6.onrender.com/api';
+// The Vercel-hosted frontend talks to the separately deployed backend; every
+// other origin (localhost, 127.0.0.1, a LAN IP, Docker, a custom domain) serves
+// the API from the same host, so derive it instead of hardcoding "localhost".
+const API_BASE_URL = window.location.hostname.endsWith('.vercel.app')
+    ? 'https://skywings-backend-xql6.onrender.com/api'
+    : `${window.location.origin}/api`;
 
 // Helper function to get auth token
 function getAuthToken() {
@@ -868,14 +871,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Load dashboard data if on dashboard page
-    if (window.location.pathname.includes('dashboard')) {
+    // Load dashboard data if on dashboard page.
+    // The admin dashboard is loaded solely by loadAdminDashboard(); calling
+    // loadDashboardData() as well fired a second /admin/stats request and raced
+    // to write the revenue figure with an extra "$" into an element that
+    // already has one in the markup.
+    if (window.location.pathname.includes('user-dashboard')) {
         loadDashboardData();
-        if (window.location.pathname.includes('user-dashboard')) {
-            loadUserDashboardData();
-        } else if (window.location.pathname.includes('admin-dashboard')) {
-            loadAdminDashboard();
-        }
+        loadUserDashboardData();
+    } else if (window.location.pathname.includes('admin-dashboard')) {
+        loadAdminDashboard();
     }
     
     // Update navbar based on login status
@@ -1071,8 +1076,7 @@ async function handleLogin(event) {
             errorMessage = error.errors.map(e => e.msg || e.message).join(', ');
         }
         
-        // Show error to user
-        alert('Login Error: ' + errorMessage); // Show alert for debugging
+        // Show error to user (inline on the form - no debugging alert)
         showFormError(form, errorMessage);
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
@@ -1256,13 +1260,9 @@ function getDaysInMonth(year, month) {
 // Returns object with validation result and date parts for restoration if needed
 function validateCalendarDate(dateInput, previousValidDate = null) {
     if (!dateInput.value) {
-        // If value is cleared but we have previous valid date, restore it
-        if (previousValidDate) {
-            const restoredDate = `${String(previousValidDate.year).padStart(4, '0')}-${String(previousValidDate.month).padStart(2, '0')}-${String(previousValidDate.day).padStart(2, '0')}`;
-            dateInput.value = restoredDate;
-            return { valid: true, dateParts: previousValidDate };
-        }
-        return null;
+        // The field was cleared (calendar "Clear" button, Delete key, form reset).
+        // Honour it - restoring the previous date here made the field impossible to empty.
+        return { valid: true, dateParts: null };
     }
     
     const dateValue = dateInput.value.trim(); // Format: YYYY-MM-DD
@@ -1375,14 +1375,8 @@ function validateCalendarDate(dateInput, previousValidDate = null) {
 // Returns object with validation result and date parts for restoration if needed
 function validateCalendarDateTime(dateTimeInput, previousValidDateTime = null) {
     if (!dateTimeInput.value) {
-        // If value is cleared but we have previous valid date, restore it
-        if (previousValidDateTime) {
-            const timePart = dateTimeInput.value.includes('T') ? dateTimeInput.value.split('T')[1] : '00:00';
-            const restoredDateTime = `${String(previousValidDateTime.year).padStart(4, '0')}-${String(previousValidDateTime.month).padStart(2, '0')}-${String(previousValidDateTime.day).padStart(2, '0')}T${timePart}`;
-            dateTimeInput.value = restoredDateTime;
-            return { valid: true, dateParts: previousValidDateTime };
-        }
-        return null;
+        // The field was cleared - honour it instead of restoring the previous value.
+        return { valid: true, dateParts: null };
     }
     
     const dateTimeValue = dateTimeInput.value.trim(); // Format: YYYY-MM-DDTHH:mm
@@ -1655,12 +1649,17 @@ function checkPasswordStrength(input) {
     }
 }
 
+let isLoggingOut = false;
+
 async function handleLogout() {
-    // Prevent multiple simultaneous logout attempts
-    if (tokenValidationInProgress) {
+    // Prevent multiple simultaneous logout attempts. This must NOT key off
+    // tokenValidationInProgress: a background /auth/check would otherwise make
+    // logout a no-op and the user would land straight back on the dashboard.
+    if (isLoggingOut) {
         return;
     }
-    
+    isLoggingOut = true;
+
     try {
         // Try to logout on server (don't wait if it fails)
         apiRequest('/auth/logout', { method: 'POST' }).catch(err => {
@@ -1745,8 +1744,10 @@ function generateFlightResults(flights) {
         const hours = Math.floor(duration / 60);
         const minutes = duration % 60;
         
-        // Calculate price based on class
-        let price = flight.total_price || flight.price || flight.base_price;
+        // Price per passenger. `flight.price` is already the class-adjusted fare
+        // from the API - `flight.total_price` is that fare times the passenger
+        // count and must not be used as the per-passenger figure.
+        let price = flight.price || flight.base_price;
         if (flightClass === 'business' && flight.business_price) {
             price = flight.business_price;
         } else if (flightClass === 'first' && flight.first_class_price) {
@@ -1979,8 +1980,13 @@ async function loadDashboardData() {
             const response = await apiRequest('/bookings/list');
             if (response.success && response.data) {
                 const bookings = response.data.bookings || [];
-                const confirmed = bookings.filter(b => b.status === 'confirmed').length;
-                const completed = bookings.filter(b => b.status === 'completed').length;
+                // "Upcoming" means confirmed *and* not yet departed - a confirmed
+                // booking for a flight that already left is not upcoming.
+                const now = new Date();
+                const confirmed = bookings.filter(b =>
+                    b.status === 'confirmed' && new Date(b.departure_datetime) > now
+                ).length;
+                const completed = bookings.filter(b => getDisplayBookingStatus(b) === 'completed').length;
                 const totalSpent = bookings
                     .filter(b => b.status === 'confirmed' || b.status === 'completed')
                     .reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
@@ -2069,18 +2075,9 @@ async function loadUserDashboardData() {
                 } else {
                     recentTable.innerHTML = recentBookings.map(booking => {
                         const date = new Date(booking.booking_date);
-                        
+
                         // Apply the same status logic as my-bookings.html
-                        const arr = new Date(booking.arrival_datetime);
-                        const now = new Date();
-                        const flightHasArrived = arr < now;
-                        
-                        let displayStatus = booking.status || 'pending';
-                        if (flightHasArrived && booking.status === 'confirmed') {
-                            const hasSeats = booking.passengers && booking.passengers.some(p => p.seat_number && p.seat_number.trim() !== '');
-                            displayStatus = hasSeats ? 'completed' : 'missed';
-                        }
-                        
+                        const displayStatus = getDisplayBookingStatus(booking);
                         const displayStatusText = String(displayStatus).toLowerCase();
                         const displayStatusCapitalized = displayStatusText.charAt(0).toUpperCase() + displayStatusText.slice(1);
                         
@@ -2295,46 +2292,70 @@ function renderBookingChart(bookingTrend) {
 
 // ========== BOOKINGS ==========
 
+// True when at least one passenger on the booking has a seat, i.e. the booking
+// was checked in. /bookings/list reports this as a count, /bookings/:id as a
+// passenger list, so both shapes are accepted.
+function isBookingCheckedIn(booking) {
+    if (!booking) return false;
+    if (typeof booking.seated_passengers !== 'undefined') {
+        return parseInt(booking.seated_passengers, 10) > 0;
+    }
+    return Array.isArray(booking.passengers) &&
+        booking.passengers.some(p => p.seat_number && String(p.seat_number).trim() !== '');
+}
+
+// Status shown to the user for a booking whose flight has already arrived:
+// checked in -> completed, never checked in -> missed. "missed" exists only in
+// the UI; the bookings.status column has no such value.
+function getDisplayBookingStatus(booking) {
+    const status = booking.status || 'pending';
+    if (status !== 'confirmed' || !booking.arrival_datetime) return status;
+    return new Date(booking.arrival_datetime) < new Date()
+        ? (isBookingCheckedIn(booking) ? 'completed' : 'missed')
+        : status;
+}
+
 // Function to synchronize booking statuses based on flight dates
+// Returns true when at least one booking was actually updated server-side.
 async function synchronizeBookingStatuses(bookings) {
     const now = new Date();
     const updatesNeeded = [];
-    
+
     for (const booking of bookings) {
         if (!booking.departure_datetime || !booking.arrival_datetime) continue;
-        
-        const dep = new Date(booking.departure_datetime);
+
         const arr = new Date(booking.arrival_datetime);
-        
+
         // Only process confirmed bookings
         if (booking.status !== 'confirmed') continue;
-        
-        // Check if flight has arrived
-        if (arr < now) {
-            // Check if passenger has seat assigned (indicating check-in)
-            const hasSeats = booking.passengers && Array.isArray(booking.passengers) && booking.passengers.some(p => p.seat_number && p.seat_number.trim() !== '');
-            const newStatus = hasSeats ? 'completed' : 'missed';
-            
-            if (newStatus !== booking.status) {
-                updatesNeeded.push({ bookingId: booking.booking_id, newStatus });
-            }
+
+        // A flight that has arrived after check-in counts as a completed trip.
+        // Bookings that were never checked in stay 'confirmed' in the database
+        // and are only *shown* as missed - see getDisplayBookingStatus().
+        if (arr < now && isBookingCheckedIn(booking)) {
+            updatesNeeded.push({ bookingId: booking.booking_id, newStatus: 'completed' });
         }
     }
-    
-    // Update statuses if needed (in background, don't block UI)
-    if (updatesNeeded.length > 0) {
-        // Update all in parallel
-        await Promise.all(updatesNeeded.map(async ({ bookingId, newStatus }) => {
-            try {
-                await apiRequest(`/bookings/${bookingId}/update-status`, {
-                    method: 'POST',
-                    body: JSON.stringify({ status: newStatus })
-                });
-            } catch (error) {
-                console.warn('Failed to update booking status:', error);
-            }
-        }));
+
+    if (updatesNeeded.length === 0) {
+        return false;
     }
+
+    // Update all in parallel
+    const results = await Promise.all(updatesNeeded.map(async ({ bookingId, newStatus }) => {
+        try {
+            await apiRequest(`/bookings/${bookingId}/update-status`, {
+                method: 'POST',
+                body: JSON.stringify({ status: newStatus })
+            });
+            return true;
+        } catch (error) {
+            console.warn('Failed to update booking status:', error);
+            return false;
+        }
+    }));
+
+    return results.some(Boolean);
 }
 
 async function filterBookings(arg1, arg2) {
@@ -2384,25 +2405,32 @@ async function filterBookings(arg1, arg2) {
             if (response.success && response.data.bookings) {
                 let filteredBookings = response.data.bookings || [];
                 
-                // Synchronize booking statuses based on flight dates
-                await synchronizeBookingStatuses(filteredBookings);
-                
-                // Reload bookings after synchronization to get updated statuses
-                const updatedResponse = await apiRequest('/bookings/list');
-                if (updatedResponse.success && updatedResponse.data.bookings) {
-                    filteredBookings = updatedResponse.data.bookings || [];
+                // Synchronize booking statuses based on flight dates and only
+                // re-fetch when something actually changed server-side.
+                const statusesChanged = await synchronizeBookingStatuses(filteredBookings);
+
+                if (statusesChanged) {
+                    const updatedResponse = await apiRequest('/bookings/list');
+                    if (updatedResponse.success && updatedResponse.data.bookings) {
+                        filteredBookings = updatedResponse.data.bookings || [];
+                    }
                 }
                 
-                // Filter by status
+                // Filter on the status the card actually shows, otherwise a
+                // flown-but-never-checked-in booking (shown as "Missed") would
+                // fall through every tab except "All".
                 if (status === 'upcoming') {
-                    filteredBookings = filteredBookings.filter(b => {
-                        const depDate = new Date(b.departure_datetime);
-                        return b.status === 'confirmed' && depDate > new Date();
-                    });
+                    filteredBookings = filteredBookings.filter(b =>
+                        getDisplayBookingStatus(b) === 'confirmed' &&
+                        new Date(b.departure_datetime) > new Date()
+                    );
                 } else if (status === 'completed') {
-                    filteredBookings = filteredBookings.filter(b => b.status === 'completed' || b.status === 'missed');
+                    filteredBookings = filteredBookings.filter(b => {
+                        const shown = getDisplayBookingStatus(b);
+                        return shown === 'completed' || shown === 'missed';
+                    });
                 } else if (status === 'cancelled') {
-                    filteredBookings = filteredBookings.filter(b => b.status === 'cancelled');
+                    filteredBookings = filteredBookings.filter(b => getDisplayBookingStatus(b) === 'cancelled');
                 }
                 // 'all' shows all bookings, no filter needed
                 
@@ -2434,8 +2462,7 @@ async function filterBookings(arg1, arg2) {
                     
                     // Check if flight has passed
                     const flightHasPassed = dep < now;
-                    const flightHasArrived = arr < now;
-                    
+
                     // Determine if check-in should be available (flight hasn't departed and status is confirmed)
                     const canCheckIn = booking.status === 'confirmed' && !flightHasPassed;
                     
@@ -2443,12 +2470,7 @@ async function filterBookings(arg1, arg2) {
                     const canCancel = booking.status !== 'cancelled' && booking.status !== 'completed' && !flightHasPassed;
                     
                     // Update status display if flight has passed but status hasn't been updated
-                    let displayStatus = booking.status;
-                    if (flightHasArrived && booking.status === 'confirmed') {
-                        // Check if checked in - if yes, mark as completed, otherwise missed
-                        const hasSeats = booking.passengers && booking.passengers.some(p => p.seat_number && p.seat_number.trim() !== '');
-                        displayStatus = hasSeats ? 'completed' : 'missed';
-                    }
+                    const displayStatus = getDisplayBookingStatus(booking);
                     
                     const bookingCard = document.createElement('div');
                     bookingCard.className = 'booking-card';
@@ -2578,9 +2600,8 @@ async function checkIn(bookingId) {
             }
             
             // Check if already checked in by checking if passengers have seat numbers
-            const hasSeats = booking.passengers && Array.isArray(booking.passengers) && 
-                            booking.passengers.some(p => p.seat_number && p.seat_number.trim() !== '');
-            
+            const hasSeats = isBookingCheckedIn(booking);
+
             // Also check if there's a check-in record
             let alreadyCheckedIn = false;
             try {
@@ -2768,7 +2789,7 @@ async function handleCheckInSearch(event) {
                 currentBooking = response.data.booking;
                 
                 // Check if passengers already have seat numbers (indicating check-in completed)
-                const hasSeats = currentBooking.passengers && currentBooking.passengers.some(p => p.seat_number && p.seat_number.trim() !== '');
+                const hasSeats = isBookingCheckedIn(currentBooking);
                 if (hasSeats) {
                     // Verify user is still authenticated
                     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -2873,7 +2894,7 @@ async function loadBookingForCheckIn() {
                 }
                 
                 // Check if already checked in by checking if passengers have seat numbers
-                const hasSeats = booking.passengers && booking.passengers.some(p => p.seat_number && p.seat_number.trim() !== '');
+                const hasSeats = isBookingCheckedIn(booking);
                 if (hasSeats) {
                     // Verify user is still authenticated before redirecting
                     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -3224,11 +3245,13 @@ function downloadBoardingPass() {
         return;
     }
     
-    // Check if jsPDF is available, if not load it
-    if (typeof window.jsPDF === 'undefined') {
+    // The UMD build exposes window.jspdf (lowercase); checking window.jsPDF
+    // never matched, so the library was re-downloaded on every click.
+    if (typeof window.jspdf === 'undefined') {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
         script.onload = () => generatePDF();
+        script.onerror = () => alert('Could not load the PDF library. Please check your connection and try again.');
         document.head.appendChild(script);
     } else {
         generatePDF();
@@ -3628,59 +3651,26 @@ async function handleFlightSubmit(event) {
         return;
     }
     
-    // Convert datetime-local to MySQL datetime format (YYYY-MM-DD HH:mm:ss)
-    let departureDateTime = null;
-    if (departure) {
-        // datetime-local format: "YYYY-MM-DDTHH:mm"
-        // MySQL format: "YYYY-MM-DD HH:mm:ss"
-        if (departure.includes('T')) {
-            departureDateTime = departure.replace('T', ' ') + ':00';
-        } else {
-            // If it's already in correct format or needs conversion
-            const depDate = new Date(departure);
-            if (!isNaN(depDate.getTime())) {
-                const year = depDate.getFullYear();
-                const month = String(depDate.getMonth() + 1).padStart(2, '0');
-                const day = String(depDate.getDate()).padStart(2, '0');
-                const hours = String(depDate.getHours()).padStart(2, '0');
-                const minutes = String(depDate.getMinutes()).padStart(2, '0');
-                departureDateTime = `${year}-${month}-${day} ${hours}:${minutes}:00`;
-            } else {
-                alert('Invalid departure date format');
-                return;
-            }
-        }
+    // Convert the datetime-local value (local time) to the UTC MySQL datetime
+    // the API stores. Sending the local wall clock as-is shifted every flight
+    // by the browser's timezone offset once it was rendered back.
+    const departureDateTime = toMysqlDateTime(departure);
+    if (departure && !departureDateTime) {
+        alert('Invalid departure date format');
+        return;
     }
-    
+
     // Calculate arrival if not provided (add 6 hours to departure)
-    let arrivalDateTime = null;
+    let arrivalDateTime;
     if (!arrival && departure) {
         const depDate = new Date(departure);
         depDate.setHours(depDate.getHours() + 6);
-        const year = depDate.getFullYear();
-        const month = String(depDate.getMonth() + 1).padStart(2, '0');
-        const day = String(depDate.getDate()).padStart(2, '0');
-        const hours = String(depDate.getHours()).padStart(2, '0');
-        const minutes = String(depDate.getMinutes()).padStart(2, '0');
-        arrivalDateTime = `${year}-${month}-${day} ${hours}:${minutes}:00`;
-    } else if (arrival) {
-        // datetime-local format: "YYYY-MM-DDTHH:mm"
-        // MySQL format: "YYYY-MM-DD HH:mm:ss"
-        if (arrival.includes('T')) {
-            arrivalDateTime = arrival.replace('T', ' ') + ':00';
-        } else {
-            const arrDate = new Date(arrival);
-            if (!isNaN(arrDate.getTime())) {
-                const year = arrDate.getFullYear();
-                const month = String(arrDate.getMonth() + 1).padStart(2, '0');
-                const day = String(arrDate.getDate()).padStart(2, '0');
-                const hours = String(arrDate.getHours()).padStart(2, '0');
-                const minutes = String(arrDate.getMinutes()).padStart(2, '0');
-                arrivalDateTime = `${year}-${month}-${day} ${hours}:${minutes}:00`;
-            } else {
-                alert('Invalid arrival date format');
-                return;
-            }
+        arrivalDateTime = toMysqlDateTime(depDate);
+    } else {
+        arrivalDateTime = toMysqlDateTime(arrival);
+        if (arrival && !arrivalDateTime) {
+            alert('Invalid arrival date format');
+            return;
         }
     }
     
@@ -3754,6 +3744,27 @@ async function handleFlightSubmit(event) {
     }
 }
 
+// Convert a local date/datetime-local value into the UTC "YYYY-MM-DD HH:mm:ss"
+// string the API stores. Counterpart of toDateTimeLocalValue() below, so a
+// flight opened in the edit modal and saved unchanged keeps its exact time.
+function toMysqlDateTime(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+// Format a date for a <input type="datetime-local"> in LOCAL time.
+// toISOString() would convert to UTC, so the edit form showed a time shifted by
+// the browser's timezone offset from the one shown everywhere else in the UI.
+function toDateTimeLocalValue(value) {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return '';
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+         + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 async function editFlight(flightId) {
     try {
         const response = await apiRequest(`/flights/${flightId}`);
@@ -3765,8 +3776,8 @@ async function editFlight(flightId) {
             form.querySelector('[name="flightNumber"]').value = flight.flight_number;
             form.querySelector('[name="from"]').value = flight.from_airport_code;
             form.querySelector('[name="to"]').value = flight.to_airport_code;
-            form.querySelector('[name="departure"]').value = new Date(flight.departure_datetime).toISOString().slice(0, 16);
-            form.querySelector('[name="arrival"]').value = new Date(flight.arrival_datetime).toISOString().slice(0, 16);
+            form.querySelector('[name="departure"]').value = toDateTimeLocalValue(flight.departure_datetime);
+            form.querySelector('[name="arrival"]').value = toDateTimeLocalValue(flight.arrival_datetime);
             form.querySelector('[name="basePrice"]').value = flight.base_price;
             form.querySelector('[name="businessPrice"]').value = flight.business_price;
             form.querySelector('[name="firstClassPrice"]').value = flight.first_class_price;
@@ -4138,8 +4149,11 @@ async function adminCancelBooking(bookingId) {
     }
 
     try {
-        const response = await apiRequest(`/bookings/${bookingId}/cancel`, {
-            method: 'POST'
+        // Admins must use the admin endpoint: /bookings/:id/cancel is scoped to
+        // the caller's own bookings and always 404s for another user's booking.
+        const response = await apiRequest(`/admin/bookings/${bookingId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status: 'cancelled', payment_status: 'refunded' })
         });
 
         if (response.success) {

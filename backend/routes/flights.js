@@ -40,6 +40,7 @@ router.get('/search', async (req, res) => {
       INNER JOIN airports arr ON f.to_airport_code = arr.airport_code
       INNER JOIN aircraft a ON f.aircraft_id = a.aircraft_id
       WHERE f.status IN ('scheduled', 'boarding')
+        AND f.departure_datetime > NOW()
     `;
 
     const params = [flightClass, flightClass, flightClass];

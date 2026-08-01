@@ -32,13 +32,15 @@ router.post('/register', [
     }
     return true;
   }),
+  // `values: 'falsy'` so an omitted optional field (sent as "" or null by the
+  // registration form) is skipped instead of failing the format check.
   body('phone')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .matches(/^[\d\s\-\+\(\)]+$/).withMessage('Invalid phone number format')
     .isLength({ max: 20 }).withMessage('Phone number is too long'),
   body('dob')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601().withMessage('Invalid date format')
     .custom((value) => {
       const dob = new Date(value);
@@ -50,7 +52,7 @@ router.post('/register', [
       return true;
     }),
   body('address')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 500 }).withMessage('Address is too long')
 ], async (req, res) => {
