@@ -2,7 +2,7 @@
 // ========== API CONFIGURATION ==========
 const API_BASE_URL = window.location.origin.includes('localhost') 
     ? 'http://localhost:3000/api' 
-    : '/api';
+    : 'https://skywings-backend-xql6.onrender.com/api';
 
 // Helper function to get auth token
 function getAuthToken() {
