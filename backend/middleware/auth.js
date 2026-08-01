@@ -1,7 +1,15 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { queryOne } = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'skywings-secret-key-change-in-production';
+// The signing key must come from the environment (see .env.example). If it is
+// missing we fall back to a random per-process key rather than a hardcoded one:
+// the app still runs locally, but tokens stop working after a restart.
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  console.warn('⚠️  JWT_SECRET is not set - using a random key for this process only.');
+  console.warn('   Set JWT_SECRET in your .env file to keep sessions valid across restarts.');
+  return crypto.randomBytes(48).toString('hex');
+})();
 
 // Middleware to verify JWT token
 async function authenticate(req, res, next) {

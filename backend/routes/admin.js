@@ -1035,8 +1035,8 @@ router.get('/hot-flights', async (req, res) => {
                 arr.airport_code, arr.airport_name, arr.city, arr.country,
                 a.model, a.capacity
        ORDER BY booking_count DESC, total_revenue DESC
-       LIMIT ?`,
-      [limit]
+       LIMIT ${limit}`,
+      []
     );
 
     // Calculate occupancy rate for each flight

@@ -55,7 +55,7 @@ async function populateTables() {
                         const colLetter = seatNumber.match(/[A-Z]+/)[0];
                         
                         await connection.execute(
-                            `INSERT INTO seats (aircraft_id, seat_number, seat_class, row_number, column_letter, is_available)
+                            `INSERT INTO seats (aircraft_id, seat_number, seat_class, \`row_number\`, column_letter, is_available)
                              VALUES (?, ?, ?, ?, ?, ?)
                              ON DUPLICATE KEY UPDATE is_available = is_available`,
                             [flight.aircraft_id, seatNumber, seatClass, rowNum, colLetter, 1]
@@ -85,7 +85,7 @@ async function populateTables() {
                         const colLetter = seatNumber.match(/[A-Z]+/)[0];
                         
                         await connection.execute(
-                            `INSERT INTO seats (aircraft_id, seat_number, seat_class, row_number, column_letter, is_available)
+                            `INSERT INTO seats (aircraft_id, seat_number, seat_class, \`row_number\`, column_letter, is_available)
                              VALUES (?, ?, ?, ?, ?, ?)
                              ON DUPLICATE KEY UPDATE is_available = is_available`,
                             [flight.aircraft_id, seatNumber, seatClass, rowNum, colLetter, 1]
@@ -116,7 +116,7 @@ async function populateTables() {
                         const colLetter = seatNumber.match(/[A-Z]+/)[0];
                         
                         await connection.execute(
-                            `INSERT INTO seats (aircraft_id, seat_number, seat_class, row_number, column_letter, is_available)
+                            `INSERT INTO seats (aircraft_id, seat_number, seat_class, \`row_number\`, column_letter, is_available)
                              VALUES (?, ?, ?, ?, ?, ?)
                              ON DUPLICATE KEY UPDATE is_available = is_available`,
                             [flight.aircraft_id, seatNumber, seatClass, rowNum, colLetter, 1]
@@ -206,14 +206,17 @@ async function populateTables() {
 
                 if (passengers.length > 0) {
                     // Get available seats for the flight's aircraft
+                    // MySQL's prepared-statement protocol rejects a placeholder
+                    // for LIMIT, so the (driver-supplied) count is inlined.
+                    const seatLimit = parseInt(passengers.length, 10);
                     const [availableSeats] = await connection.execute(
                         `SELECT seat_id, seat_number
                          FROM seats
-                         WHERE aircraft_id = ? 
+                         WHERE aircraft_id = ?
                            AND seat_class = ?
                            AND is_available = 1
-                         LIMIT ?`,
-                        [booking.aircraft_id, booking.class, passengers.length]
+                         LIMIT ${seatLimit}`,
+                        [booking.aircraft_id, booking.class]
                     );
 
                     if (availableSeats.length >= passengers.length) {

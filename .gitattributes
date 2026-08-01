@@ -1,0 +1,8 @@
+# Shell scripts must keep LF endings so they run inside Linux containers
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+
+# Read by Docker / the containers, so keep them LF as well
+.dockerignore text eol=lf
+.env.example text eol=lf

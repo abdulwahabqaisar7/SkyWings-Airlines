@@ -4,6 +4,18 @@ A complete flight booking system built with Node.js, Express, MySQL, and vanilla
 
 ## 🚀 Quick Start
 
+### Option A — Docker (nothing to install but Docker)
+
+```bash
+cp .env.example .env      # then replace every CHANGE_ME value
+docker compose up -d --build
+```
+
+Open <http://localhost:3000>. MySQL, the schema and the default accounts are set
+up automatically inside containers. Full details in [DOCKER.md](DOCKER.md).
+
+### Option B — Local install
+
 ### Prerequisites
 - **Node.js** (v14 or higher) - [Download](https://nodejs.org/)
 - **MySQL Server** (v8.0 or higher) - [Download](https://dev.mysql.com/downloads/mysql/)

@@ -10,11 +10,12 @@ async function populateAdditionalData() {
     let connection;
 
     try {
+        // Credentials come from .env (see .env.example) - never hardcoded here
         connection = await mysql.createConnection({
             host: process.env.DB_HOST || 'localhost',
             port: process.env.DB_PORT || 3306,
             user: process.env.DB_USER || 'root',
-            password: process.env.DB_PASSWORD || '2240',
+            password: process.env.DB_PASSWORD || '',
             database: process.env.DB_NAME || 'skywings_airlines'
         });
 

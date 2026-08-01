@@ -122,12 +122,15 @@ CREATE TABLE IF NOT EXISTS booking_passengers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Seats Table
+-- NOTE: `row_number` is a reserved word since MySQL 8.0.2 (window function),
+-- so it must stay back-quoted here and in every query that references it.
+-- Back-quoting is valid on MySQL 5.7 as well, so this is safe on any version.
 CREATE TABLE IF NOT EXISTS seats (
     seat_id INT AUTO_INCREMENT PRIMARY KEY,
     aircraft_id INT NOT NULL,
     seat_number VARCHAR(10) NOT NULL,
     seat_class ENUM('economy', 'business', 'first') NOT NULL,
-    row_number INT NOT NULL,
+    `row_number` INT NOT NULL,
     column_letter VARCHAR(2) NOT NULL,
     is_available BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -216,7 +219,7 @@ ON DUPLICATE KEY UPDATE flight_number=VALUES(flight_number);
 -- Insert Sample Seats for Aircraft
 -- Boeing 737-800 (SW-001): 180 seats (30 rows, 6 seats per row: A-B-C-D-E-F)
 -- Business: Rows 1-3 (18 seats), Economy: Rows 4-30 (162 seats)
-INSERT INTO seats (aircraft_id, seat_number, seat_class, row_number, column_letter, is_available) 
+INSERT INTO seats (aircraft_id, seat_number, seat_class, `row_number`, column_letter, is_available) 
 SELECT 1, CONCAT(seat_row, COL_LET), 
        CASE WHEN seat_row <= 3 THEN 'business' ELSE 'economy' END,
        seat_row, COL_LET, TRUE
@@ -224,7 +227,7 @@ FROM (
   SELECT seat_row, COL_LET
   FROM (SELECT 1 as seat_row UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10
         UNION SELECT 11 UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION SELECT 15 UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19 UNION SELECT 20
-        UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24 UNION SELECT 25 UNION SELECT 26 UNION SELECT 27 UNION SELECT 28 UNION SELECT 29 UNION SELECT 30) rows
+        UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24 UNION SELECT 25 UNION SELECT 26 UNION SELECT 27 UNION SELECT 28 UNION SELECT 29 UNION SELECT 30) `rows`
   CROSS JOIN (SELECT 'A' as COL_LET UNION SELECT 'B' UNION SELECT 'C' UNION SELECT 'D' UNION SELECT 'E' UNION SELECT 'F') cols
 ) seat_combos
 ON DUPLICATE KEY UPDATE seat_number=VALUES(seat_number);
@@ -232,7 +235,7 @@ ON DUPLICATE KEY UPDATE seat_number=VALUES(seat_number);
 -- Boeing 777-300ER (SW-002): 365 seats
 -- First: Rows 1-2 (14 seats), Business: Rows 3-8 (48 seats), Economy: Rows 9-42 (303 seats)
 -- Configuration: First (2-4-2), Business (2-4-2), Economy (3-4-3)
-INSERT INTO seats (aircraft_id, seat_number, seat_class, row_number, column_letter, is_available)
+INSERT INTO seats (aircraft_id, seat_number, seat_class, `row_number`, column_letter, is_available)
 SELECT 2, CONCAT(seat_row, COL_LET),
        CASE 
          WHEN seat_row <= 2 THEN 'first'
@@ -246,7 +249,7 @@ FROM (
         UNION SELECT 11 UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION SELECT 15 UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19 UNION SELECT 20
         UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24 UNION SELECT 25 UNION SELECT 26 UNION SELECT 27 UNION SELECT 28 UNION SELECT 29 UNION SELECT 30
         UNION SELECT 31 UNION SELECT 32 UNION SELECT 33 UNION SELECT 34 UNION SELECT 35 UNION SELECT 36 UNION SELECT 37 UNION SELECT 38 UNION SELECT 39 UNION SELECT 40
-        UNION SELECT 41 UNION SELECT 42) rows
+        UNION SELECT 41 UNION SELECT 42) `rows`
   CROSS JOIN (SELECT 'A' as COL_LET UNION SELECT 'B' UNION SELECT 'C' UNION SELECT 'D' UNION SELECT 'E' UNION SELECT 'F' UNION SELECT 'G' UNION SELECT 'H' UNION SELECT 'I' UNION SELECT 'J' UNION SELECT 'K') cols
   WHERE NOT (seat_row <= 2 AND COL_LET IN ('I', 'J', 'K'))  -- First class: A-H only
     AND NOT (seat_row BETWEEN 3 AND 8 AND COL_LET IN ('I', 'J', 'K'))  -- Business: A-H only
@@ -255,7 +258,7 @@ ON DUPLICATE KEY UPDATE seat_number=VALUES(seat_number);
 
 -- Airbus A320 (SW-003): 180 seats (30 rows, 6 seats per row: A-B-C-D-E-F)
 -- Business: Rows 1-3 (18 seats), Economy: Rows 4-30 (162 seats)
-INSERT INTO seats (aircraft_id, seat_number, seat_class, row_number, column_letter, is_available)
+INSERT INTO seats (aircraft_id, seat_number, seat_class, `row_number`, column_letter, is_available)
 SELECT 3, CONCAT(seat_row, COL_LET),
        CASE WHEN seat_row <= 3 THEN 'business' ELSE 'economy' END,
        seat_row, COL_LET, TRUE
@@ -263,14 +266,14 @@ FROM (
   SELECT seat_row, COL_LET
   FROM (SELECT 1 as seat_row UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10
         UNION SELECT 11 UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION SELECT 15 UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19 UNION SELECT 20
-        UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24 UNION SELECT 25 UNION SELECT 26 UNION SELECT 27 UNION SELECT 28 UNION SELECT 29 UNION SELECT 30) rows
+        UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24 UNION SELECT 25 UNION SELECT 26 UNION SELECT 27 UNION SELECT 28 UNION SELECT 29 UNION SELECT 30) `rows`
   CROSS JOIN (SELECT 'A' as COL_LET UNION SELECT 'B' UNION SELECT 'C' UNION SELECT 'D' UNION SELECT 'E' UNION SELECT 'F') cols
 ) seat_combos
 ON DUPLICATE KEY UPDATE seat_number=VALUES(seat_number);
 
 -- Airbus A350 (SW-004): 325 seats
 -- Business: Rows 1-6 (48 seats), Economy: Rows 7-40 (277 seats)
-INSERT INTO seats (aircraft_id, seat_number, seat_class, row_number, column_letter, is_available)
+INSERT INTO seats (aircraft_id, seat_number, seat_class, `row_number`, column_letter, is_available)
 SELECT 4, CONCAT(seat_row, COL_LET),
        CASE WHEN seat_row <= 6 THEN 'business' ELSE 'economy' END,
        seat_row, COL_LET, TRUE
@@ -279,7 +282,7 @@ FROM (
   FROM (SELECT 1 as seat_row UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10
         UNION SELECT 11 UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION SELECT 15 UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19 UNION SELECT 20
         UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24 UNION SELECT 25 UNION SELECT 26 UNION SELECT 27 UNION SELECT 28 UNION SELECT 29 UNION SELECT 30
-        UNION SELECT 31 UNION SELECT 32 UNION SELECT 33 UNION SELECT 34 UNION SELECT 35 UNION SELECT 36 UNION SELECT 37 UNION SELECT 38 UNION SELECT 39 UNION SELECT 40) rows
+        UNION SELECT 31 UNION SELECT 32 UNION SELECT 33 UNION SELECT 34 UNION SELECT 35 UNION SELECT 36 UNION SELECT 37 UNION SELECT 38 UNION SELECT 39 UNION SELECT 40) `rows`
   CROSS JOIN (SELECT 'A' as COL_LET UNION SELECT 'B' UNION SELECT 'C' UNION SELECT 'D' UNION SELECT 'E' UNION SELECT 'F' UNION SELECT 'G' UNION SELECT 'H') cols
 ) seat_combos
 ON DUPLICATE KEY UPDATE seat_number=VALUES(seat_number);

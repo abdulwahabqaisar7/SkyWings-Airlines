@@ -1,15 +1,18 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Determine if SSL is needed (TiDB Cloud requires SSL)
-const useSSL = process.env.NODE_ENV === 'production' || process.env.DB_SSL === 'true';
+// Determine if SSL is needed (TiDB Cloud requires SSL; a containerised MySQL on
+// the private Docker network does not, hence the explicit DB_SSL override)
+const useSSL = process.env.DB_SSL !== undefined
+  ? process.env.DB_SSL === 'true'
+  : process.env.NODE_ENV === 'production';
 
-// Database configuration (works with local MySQL and TiDB Cloud)
+// Database configuration (works with local MySQL, Docker and TiDB Cloud)
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '2240',
+  password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'skywings_airlines',
   waitForConnections: true,
   connectionLimit: 10,

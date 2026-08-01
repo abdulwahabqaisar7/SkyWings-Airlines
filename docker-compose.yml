@@ -1,0 +1,103 @@
+name: skywings-airlines
+
+services:
+  # ---------------------------------------------------------------------------
+  # MySQL 8 - schema is applied automatically the first time the data volume is
+  # created (see the /docker-entrypoint-initdb.d mount below).
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: skywings-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-skywings_airlines}
+      MYSQL_USER: ${MYSQL_USER:?set MYSQL_USER in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      # Exposed for local tools (MySQL Workbench, CLI). Remove to keep it internal.
+      - "${MYSQL_HOST_PORT:-3307}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - skywings
+
+  # ---------------------------------------------------------------------------
+  # One-shot seeder: sets bcrypt password hashes for the default accounts and,
+  # when SEED_SAMPLE_DATA=true, loads the large demo dataset. Runs once per
+  # 'seed_state' volume, then exits.
+  # ---------------------------------------------------------------------------
+  db-seed:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    image: skywings-db-seed:latest
+    container_name: skywings-db-seed
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE:-skywings_airlines}
+      SEED_SAMPLE_DATA: ${SEED_SAMPLE_DATA:-false}
+    volumes:
+      - seed_state:/state
+    networks:
+      - skywings
+
+  # ---------------------------------------------------------------------------
+  # Express API + static frontend
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: skywings-app:latest
+    container_name: skywings-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      db-seed:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE:-skywings_airlines}
+      # The MySQL container speaks plain TCP on the private network
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+    ports:
+      # frontend/js/main.js targets http://localhost:3000/api when served from
+      # localhost, so keep the host port at 3000 unless you also change that.
+      - "${APP_HOST_PORT:-3000}:3000"
+    networks:
+      - skywings
+
+volumes:
+  # Persistent MySQL data - survives 'docker compose down'
+  mysql_data:
+  # Marker volume so the seeder only runs once
+  seed_state:
+
+networks:
+  skywings:
+    driver: bridge
