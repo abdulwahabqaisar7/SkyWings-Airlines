@@ -563,6 +563,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentFile === 'flight-search.html' || currentHref.includes('flight-search')) {
             // Allow guest access but update navbar based on auth status
             updateNavbar();
+
+            // Arriving from the home page's quick search: restore the criteria
+            // and run the search so the user lands on results, not a blank form.
+            if (applyFlightSearchQueryParams()) {
+                handleFlightSearch();
+            }
         } else {
             // Other user pages require authentication
             if (!requireAuth('user')) {
@@ -1684,14 +1690,59 @@ async function handleLogout() {
 
 // ========== FLIGHT SEARCH ==========
 
+// Fields the home page's quick search hands over to the full search page.
+const FLIGHT_SEARCH_FIELDS = ['from', 'to', 'departure', 'return', 'passengers', 'class'];
+
 function handleQuickSearch(event) {
     event.preventDefault();//Prevent default behaviour which is submitting the form and reload
-    window.location.href = 'flight-search.html';
+
+    // Carry the criteria over instead of dropping them - the user filled this
+    // form in, so the search page must open on those flights, not an empty form.
+    const formData = new FormData(event.target);
+    const params = new URLSearchParams();
+    FLIGHT_SEARCH_FIELDS.forEach(name => {
+        const value = formData.get(name);
+        if (value) params.set(name, value);
+    });
+
+    const query = params.toString();
+    window.location.href = query ? `flight-search.html?${query}` : 'flight-search.html';
+}
+
+// Copy ?from=&to=&departure=... into the detailed search form.
+// Returns true when there is enough to run the search straight away.
+function applyFlightSearchQueryParams() {
+    const form = document.querySelector('.search-form.detailed');
+    if (!form || !window.location.search) return false;
+
+    const params = new URLSearchParams(window.location.search);
+
+    FLIGHT_SEARCH_FIELDS.forEach(name => {
+        const value = params.get(name);
+        const field = form.querySelector(`[name="${name}"]`);
+        if (!value || !field) return;
+
+        // Ignore anything a <select> does not actually offer, so a hand-edited
+        // URL cannot leave the form showing a value it cannot submit.
+        if (field.tagName === 'SELECT' &&
+            !Array.from(field.options).some(option => option.value === value)) {
+            return;
+        }
+
+        field.value = value;
+    });
+
+    return !!(params.get('from') && params.get('to'));
 }
 
 async function handleFlightSearch(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
+    if (event) event.preventDefault();
+
+    // Called without an event when the page opens with search criteria in the URL.
+    const form = (event && event.target) || document.querySelector('.search-form.detailed');
+    if (!form) return;
+
+    const formData = new FormData(form);
     const from = formData.get('from');
     const to = formData.get('to');
     const departure = formData.get('departure');
@@ -3031,23 +3082,30 @@ async function initializeSeatMap() {
 
     // Get aircraft capacity and occupied seats
     try {
-        const flightResponse = await apiRequest(`/flights/${currentBooking.flight_id}`);
+        // Seats already taken by *any* booking on this flight, so the map shows
+        // them as occupied up front rather than rejecting the choice on confirm.
+        const [flightResponse, seatsResponse] = await Promise.all([
+            apiRequest(`/flights/${currentBooking.flight_id}`),
+            apiRequest(`/flights/${currentBooking.flight_id}/seats`).catch(error => {
+                console.warn('Could not load seat availability:', error.message);
+                return null;
+            })
+        ]);
+
         const flight = flightResponse.data?.flight || {};
         const capacity = flight.capacity || flight.available_seats + (flight.booked_seats || 0) || 30;
         const rows = Math.ceil(capacity / 6);
-        
-        // Get occupied seats from booking passengers
-        const occupiedSeats = new Set();
+
+        const occupiedSeats = new Set(seatsResponse?.data?.occupied || []);
+
+        // Plus anything already assigned to this booking's own passengers
         if (currentBooking.passengers) {
             currentBooking.passengers.forEach(p => {
                 if (p.seat_number) {
-                    occupiedSeats.add(p.seat_number.toUpperCase());
+                    occupiedSeats.add(String(p.seat_number).trim().toUpperCase());
                 }
             });
         }
-
-        // Note: We only mark seats occupied if they're already assigned to this booking's passengers
-        // The backend will validate seat availability when confirming check-in
 
         // Remove existing seat info if any
         const existingInfo = document.querySelector('.seat-info');

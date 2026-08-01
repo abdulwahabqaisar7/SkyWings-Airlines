@@ -1,5 +1,6 @@
 const express = require('express');
 const { query } = require('../config/database');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -164,6 +165,46 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get flight details: ' + error.message
+    });
+  }
+});
+
+// ========== GET TAKEN SEATS FOR A FLIGHT ==========
+// Feeds the check-in seat map so seats held by other bookings are shown as
+// occupied instead of only being rejected after the user picks them.
+router.get('/:id/seats', authenticate, async (req, res) => {
+  try {
+    const flightId = parseInt(req.params.id);
+
+    if (isNaN(flightId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid flight ID'
+      });
+    }
+
+    const rows = await query(
+      `SELECT DISTINCT bp.seat_number
+         FROM booking_passengers bp
+         INNER JOIN bookings b ON bp.booking_id = b.booking_id
+        WHERE b.flight_id = ?
+          AND b.status != 'cancelled'
+          AND bp.seat_number IS NOT NULL
+          AND bp.seat_number <> ''`,
+      [flightId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        occupied: (rows || []).map(row => String(row.seat_number).trim().toUpperCase())
+      }
+    });
+  } catch (error) {
+    console.error('Get flight seats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get seat availability: ' + error.message
     });
   }
 });
